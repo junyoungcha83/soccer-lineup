@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="포지션">
-<link rel="stylesheet" href="assets/app.css?v=9">
+<link rel="stylesheet" href="assets/app.css?v=10">
 </head>
 <body>
 <header class="top">
@@ -33,7 +33,7 @@
     <div class="line corner cr"></div>
     <div id="slots"></div>
     <div class="pitch-tools">
-      <button type="button" id="saveBtn" class="reset-btn">💾 위치 저장</button>
+      <button type="button" id="saveBtn" class="reset-btn">💾 저장함</button>
       <button type="button" id="resetBtn" class="reset-btn">↺ 기본 위치</button>
     </div>
   </div>
@@ -72,7 +72,7 @@
 <dialog id="menuDlg">
   <form method="dialog">
     <h3>더보기</h3>
-    <button type="button" id="resetPos" class="wide">저장 위치 지우고 포메이션 기본값으로</button>
+    <button type="button" id="resetPos" class="wide">포지션·위치 초기화 (포메이션 기본값)</button>
     <button type="button" id="clearAll" class="wide danger">전체 초기화</button>
     <div class="dlg-btns"><span class="sp"></span><button class="ghost">닫기</button></div>
   </form>
@@ -84,7 +84,14 @@
   <div id="posList" class="pos-list"></div>
 </dialog>
 
+<dialog id="slotDlg" class="pos-dlg">
+  <div class="pos-dlg-head"><h3>저장함</h3><button type="button" id="slotClose" class="ghost">닫기</button></div>
+  <p class="hint">저장: 지금 화면(포메이션·선발·위치·후보)을 칸에 담아요. 불러오기: 그 상태로 바로 바뀌어요.</p>
+  <ol id="slotList" class="slot-list"></ol>
+  <div class="slot-foot"><button type="button" id="slotAdd" class="wide ghost">+ 저장 칸 추가</button></div>
+</dialog>
+
 <div id="toast" class="toast"></div>
-<script src="assets/app.js?v=9"></script>
+<script src="assets/app.js?v=10"></script>
 </body>
 </html>

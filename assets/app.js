@@ -89,12 +89,14 @@ function layout() {
 const KEY = 'soccer-lineup-v1';
 const $ = id => document.getElementById(id);
 const DEFAULT_FORMATION = '4-1-4-1';
+const SLOT_MIN = 5, SLOT_MAX = 20;
 let S = load();
 S.xy ||= []; // 이 기능 이전 저장본 호환
-S.saved ||= {}; // 포메이션별로 '위치 저장' 해 둔 배치 { pos, xy }
+S.slots ||= Array(SLOT_MIN).fill(null); // 저장함: 칸마다 { name, at, formation, starters, bench, pos, xy, players }
+migrateSaved();
 
 function blank() {
-  return { title: '', formation: DEFAULT_FORMATION, players: {}, starters: Array(11).fill(null), pos: Array(11).fill(null), xy: [], saved: {}, bench: [] };
+  return { title: '', formation: DEFAULT_FORMATION, players: {}, starters: Array(11).fill(null), pos: Array(11).fill(null), xy: [], slots: Array(SLOT_MIN).fill(null), cur: null, bench: [] };
 }
 function load() {
   try {
@@ -118,7 +120,6 @@ function setFormation(f) {
   S.xy = [];
   S.bench.unshift(...extra);
   S.formation = f;
-  if (S.saved[f]) { S.pos = [...S.saved[f].pos]; S.xy = S.saved[f].xy.map(v => [...v]); }
   save(); render();
   if (extra.length) toast(`${extra.length}명이 후보로 이동했어요`);
 }
@@ -126,7 +127,7 @@ function setFormation(f) {
 /* ---------- 렌더 ---------- */
 function render() {
   $('title').value = S.title;
-  $('resetBtn').textContent = S.saved[S.formation] ? '↺ 저장 위치' : '↺ 기본 위치';
+  $('saveBtn').textContent = '💾 ' + (S.slots[S.cur]?.name || '저장함');
   $('formation').value = S.formation;
   $('slots').innerHTML = layout().map(([label, x, y], i) => {
     const p = S.players[S.starters[i]];
@@ -359,34 +360,103 @@ $('formation').onchange = e => setFormation(e.target.value);
 $('title').oninput = e => { S.title = e.target.value; save(); };
 $('addBtn').onclick = addPlayer;
 $('menuBtn').onclick = () => $('menuDlg').showModal();
-// 포지션 이름·손으로 옮긴 위치를 모두 포메이션 기본값으로 (선수 배치는 그대로)
-// '위치 저장': 지금 보이는 배치(포지션 이름 + 모든 선수 좌표)를 이 포메이션의 내 기본값으로
-function saveLayout() {
-  if (S.saved[S.formation] && !confirm('이전에 저장한 위치를 지금 위치로 바꿀까요?')) return;
-  S.saved[S.formation] = { pos: [...S.pos], xy: layout().map(([, x, y]) => [x, y]) };
-  save(); render(); toast('지금 위치를 저장했어요 · ↺ 누르면 이 위치로 돌아와요');
-}
-// ↺: 저장한 위치가 있으면 그 위치로, 없으면 포메이션 기본 위치로 (선수 배치는 그대로)
+// ↺ / 메뉴: 포지션 이름·손으로 옮긴 위치를 포메이션 기본값으로 (선수 배치는 그대로)
 function resetPositions() {
-  const sv = S.saved[S.formation];
-  const same = sv ? JSON.stringify([S.pos, S.xy]) === JSON.stringify([sv.pos, sv.xy]) : !S.pos.some(Boolean) && !S.xy.some(Boolean);
-  if (same) { toast(sv ? '이미 저장한 위치예요' : '이미 기본 위치예요'); return; }
-  if (!confirm(sv ? '모든 선수를 저장한 위치로 되돌릴까요?' : '모든 선수를 포메이션 기본 위치로 되돌릴까요?')) return;
-  if (sv) { S.pos = [...sv.pos]; S.xy = sv.xy.map(v => [...v]); } else { S.pos = S.pos.map(() => null); S.xy = []; }
-  save(); render(); toast(sv ? '저장한 위치로 되돌렸어요' : '기본 위치로 되돌렸어요');
+  if (!S.pos.some(Boolean) && !S.xy.some(Boolean)) { toast('이미 기본 위치예요'); return; }
+  if (!confirm('모든 선수를 포메이션 기본 위치로 되돌릴까요?')) return;
+  S.pos = S.pos.map(() => null); S.xy = [];
+  save(); render(); toast('기본 위치로 되돌렸어요');
 }
-$('saveBtn').onclick = saveLayout;
 $('resetBtn').onclick = resetPositions;
-// 메뉴: 저장한 위치까지 지우고 포메이션 원래 기본값으로
-$('resetPos').onclick = () => {
-  $('menuDlg').close();
-  if (!confirm(`저장한 위치를 지우고 ${S.formation} 원래 기본 위치로 되돌릴까요?`)) return;
-  delete S.saved[S.formation]; S.pos = S.pos.map(() => null); S.xy = [];
-  save(); render(); toast('포메이션 기본 위치로 되돌렸어요');
+$('resetPos').onclick = () => { $('menuDlg').close(); resetPositions(); };
+
+/* ---------- 저장함 (라인업 여러 개 저장·불러오기) ---------- */
+// 칸 하나 = 지금 화면 통째로. 선수 번호·이름도 함께 담아서 선수를 지워도 불러오면 되살아난다.
+function snapshot(name) {
+  const ids = [...S.starters, ...S.bench].filter(Boolean);
+  return {
+    name, at: Date.now(), formation: S.formation,
+    starters: [...S.starters], bench: [...S.bench], pos: [...S.pos],
+    xy: layout().map(([, x, y]) => [x, y]),
+    players: Object.fromEntries(ids.map(id => [id, { ...S.players[id] }])),
+  };
+}
+function loadSlot(k) {
+  const sv = S.slots[k];
+  for (const [id, p] of Object.entries(sv.players)) S.players[id] ||= { ...p };
+  S.formation = sv.formation;
+  S.starters = sv.starters.map(id => (id && S.players[id] ? id : null));
+  S.pos = [...sv.pos];
+  S.xy = sv.xy.map(v => [...v]);
+  const used = new Set(S.starters);
+  const bench = sv.bench.filter(id => S.players[id] && !used.has(id));
+  // 저장 뒤에 새로 추가한 선수는 후보 끝에 붙인다
+  for (const id of Object.keys(S.players)) if (!used.has(id) && !bench.includes(id)) bench.push(id);
+  S.bench = bench;
+  S.cur = k;
+  save(); render();
+}
+// 이전 버전의 포메이션별 '위치 저장'을 저장함 칸으로 옮긴다
+function migrateSaved() {
+  if (!S.saved) return;
+  for (const [f, sv] of Object.entries(S.saved)) {
+    const k = S.slots.indexOf(null);
+    if (k < 0) break;
+    const n = slotsOf(f).length;
+    const starters = Array.from({ length: n }, (_, i) => S.starters[i] ?? null);
+    const ids = [...starters, ...S.bench].filter(Boolean);
+    S.slots[k] = { name: `${f} 저장 위치`, at: Date.now(), formation: f, starters, bench: [...S.bench], pos: sv.pos, xy: sv.xy,
+      players: Object.fromEntries(ids.map(id => [id, { ...S.players[id] }])) };
+  }
+  delete S.saved;
+  save();
+}
+
+const fmtAt = t => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+function renderSlots() {
+  $('slotList').innerHTML = S.slots.map((sv, k) => sv
+    ? `<li class="slot-row${k === S.cur ? ' cur' : ''}" data-k="${k}">
+        <div class="slot-info"><b>${k + 1}. ${esc(sv.name)}</b>
+          <small>${esc(sv.formation)} · 선발 ${sv.starters.filter(Boolean).length} · 후보 ${sv.bench.length} · ${fmtAt(sv.at)}</small></div>
+        <div class="slot-btns"><button type="button" data-act="load" class="primary">불러오기</button>
+          <button type="button" data-act="save">덮어쓰기</button><button type="button" data-act="rename">이름</button>
+          <button type="button" data-act="del" class="danger">삭제</button></div></li>`
+    : `<li class="slot-row empty" data-k="${k}"><div class="slot-info"><b>${k + 1}. 비어 있음</b></div>
+        <div class="slot-btns"><button type="button" data-act="save">여기에 저장</button></div></li>`).join('');
+  $('slotAdd').hidden = S.slots.length >= SLOT_MAX;
+}
+$('saveBtn').onclick = () => { renderSlots(); $('slotDlg').showModal(); };
+$('slotClose').onclick = () => $('slotDlg').close();
+$('slotAdd').onclick = () => { S.slots.push(null); save(); renderSlots(); };
+$('slotList').onclick = e => {
+  const btn = e.target.closest('button[data-act]'); if (!btn) return;
+  const k = +btn.closest('[data-k]').dataset.k, sv = S.slots[k];
+  switch (btn.dataset.act) {
+    case 'load':
+      loadSlot(k); $('slotDlg').close(); toast(`'${sv.name}' 불러왔어요`); return;
+    case 'save': {
+      if (sv && !confirm(`'${sv.name}'에 지금 화면을 덮어쓸까요?`)) return;
+      const name = sv ? sv.name : prompt('저장 이름', S.title || `라인업 ${k + 1}`);
+      if (name == null) return;
+      S.slots[k] = snapshot(name.trim() || `라인업 ${k + 1}`); S.cur = k;
+      save(); render(); toast(`'${S.slots[k].name}'에 저장했어요`); break;
+    }
+    case 'rename': {
+      const name = prompt('새 이름', sv.name);
+      if (!name?.trim()) return;
+      sv.name = name.trim(); save(); render(); break;
+    }
+    case 'del':
+      if (!confirm(`'${sv.name}' 저장을 지울까요?`)) return;
+      S.slots[k] = null; if (S.cur === k) S.cur = null;
+      save(); render(); break;
+  }
+  renderSlots();
 };
 $('clearAll').onclick = () => {
-  if (!confirm('선수와 배치를 모두 지울까요?')) return;
-  S = blank(); save(); render(); $('menuDlg').close();
+  if (!confirm('선수와 배치를 모두 지울까요? (저장함은 남아요)')) return;
+  const slots = S.slots;
+  S = blank(); S.slots = slots; save(); render(); $('menuDlg').close();
 };
 
 $('shareBtn').onclick = async () => {
