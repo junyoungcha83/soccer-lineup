@@ -125,11 +125,21 @@ function render() {
   $('benchCount').textContent = S.bench.length;
   $('benchList').innerHTML = S.bench.length ? S.bench.map((id, k) => {
     const p = S.players[id];
-    return `<li class="bench-item" data-bench="${k}">
-      ${shirt(p.num, false)}<div class="name">${esc(p.name || '이름없음')}</div>
-      <div class="handle" aria-label="끌어서 교체">☰</div></li>`;
-  }).join('') : '<li class="empty-bench">후보가 없어요. 경기장 선수를 여기로 끌어오거나 + 선수 추가</li>';
+    return `<li class="bench-chip" data-bench="${k}">${shirt('', false)}` +
+      `${p.num ? `<span class="num">${esc(p.num)}</span>` : ''}<span class="nm">${esc(p.name || '이름없음')}</span></li>`;
+  }).join('') : '<li class="empty-bench">후보 없음 — 경기장 선수를 여기로 끌어오거나 + 추가</li>';
 }
+
+// 후보 목록 펼치기/접기 (기기별로 기억)
+const OPEN_KEY = 'soccer-lineup-bench-open';
+function setBenchOpen(open) {
+  $('benchPanel').hidden = !open;
+  $('benchArrow').textContent = open ? '▾' : '▴';
+  $('benchToggle').setAttribute('aria-expanded', open);
+  try { localStorage.setItem(OPEN_KEY, open ? '1' : ''); } catch {}
+}
+$('benchToggle').onclick = () => setBenchOpen($('benchPanel').hidden);
+try { setBenchOpen(!!localStorage.getItem(OPEN_KEY)); } catch { setBenchOpen(false); }
 const SHIRT = 'M13 2 4 7 0 17l7 3 2-4v22h22V16l2 4 7-3-4-10-9-5c-1 3-4 5-7 5s-6-2-7-5z';
 const SHORTS = 'M9 36h22l2.5 14H22l-2-6-2 6H6.5z';
 // 필드 선수: 노란 상의 + 검은 하의. 골키퍼: 검은 상의(하늘색 소매) + 검은 하의.
@@ -142,7 +152,7 @@ function shirt(num, gk) {
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /* ---------- 드래그 (마우스·터치 공용 Pointer Events) ---------- */
-// 경기장 선수와 후보의 ☰는 바로 드래그, 후보 줄의 나머지 부분은 길게 눌러 드래그(짧게 누르면 스크롤·탭).
+// 경기장 선수·후보 버튼 모두 누른 채 움직이면 바로 드래그, 움직이지 않고 떼면 탭(수정).
 let drag = null;
 
 function srcOf(el) {
@@ -153,16 +163,15 @@ function srcOf(el) {
 function targetAt(x, y) {
   const el = document.elementFromPoint(x, y);
   if (!el) return null;
-  return srcOf(el) || (el.closest('[data-bench-zone]') ? { type: 'zone', el: $('benchList') } : null);
+  const zone = el.closest('[data-bench-zone]');
+  return srcOf(el) || (zone ? { type: 'zone', el: zone } : null);
 }
 
 document.addEventListener('pointerdown', e => {
   if (e.button > 0 || drag) return;
   const src = srcOf(e.target);
   if (!src) return;
-  const instant = src.type === 'slot' || e.target.closest('.handle') || e.pointerType === 'mouse';
-  drag = { src, x0: e.clientX, y0: e.clientY, active: false, id: e.pointerId, target: null, timer: null };
-  if (!instant) drag.timer = setTimeout(() => drag && startDrag(drag.x0, drag.y0), 350);
+  drag = { src, x0: e.clientX, y0: e.clientY, active: false, id: e.pointerId, target: null };
 });
 
 window.addEventListener('pointermove', e => {
@@ -170,7 +179,6 @@ window.addEventListener('pointermove', e => {
   const moved = Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 6;
   if (!drag.active) {
     if (!moved) return;
-    if (drag.timer) { cancelDrag(); return; } // 길게 누르기 전에 움직이면 스크롤로 본다
     startDrag(e.clientX, e.clientY);
   }
   drag.ghost.style.left = e.clientX + 'px';
@@ -197,7 +205,7 @@ window.addEventListener('pointerup', e => {
 window.addEventListener('pointercancel', () => cancelDrag());
 
 function startDrag(x, y) {
-  clearTimeout(drag.timer); drag.timer = null; drag.active = true;
+  drag.active = true;
   const { type, i } = drag.src;
   const p = S.players[type === 'slot' ? S.starters[i] : S.bench[i]];
   if (!p) { cancelDrag(); return; } // 빈 자리는 끌 수 없음
@@ -211,7 +219,6 @@ function startDrag(x, y) {
 }
 function cancelDrag() {
   if (!drag) return;
-  clearTimeout(drag.timer);
   drag.ghost?.remove();
   drag.src.el.classList.remove('dragging-src');
   drag.target?.el.classList.remove('target', 'over');

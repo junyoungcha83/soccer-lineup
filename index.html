@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="포지션">
-<link rel="stylesheet" href="assets/app.css?v=4">
+<link rel="stylesheet" href="assets/app.css?v=5">
 </head>
 <body>
 <header class="top">
@@ -35,13 +35,15 @@
   </div>
 </section>
 
-<section class="bench">
-  <div class="bench-head">
-    <h2>후보 <span id="benchCount">0</span></h2>
-    <button id="addBtn">+ 선수 추가</button>
+<section class="bench" data-bench-zone="1">
+  <div class="bench-bar">
+    <button id="benchToggle" class="bench-toggle" aria-expanded="false">후보 <b id="benchCount">0</b>명 <span id="benchArrow">▴</span></button>
+    <button id="addBtn">+ 추가</button>
   </div>
-  <p class="hint">선수를 끌어서 다른 선수 위에 놓으면 교체 · 탭하면 번호/이름 수정</p>
-  <ul id="benchList" class="bench-list" data-bench-zone="1"></ul>
+  <div id="benchPanel" class="bench-panel" hidden>
+    <ul id="benchList" class="bench-chips"></ul>
+    <p class="hint">끌어서 경기장 선수 위에 놓으면 교체 · 탭하면 수정</p>
+  </div>
 </section>
 
 <dialog id="editDlg">
@@ -79,6 +81,6 @@
 </dialog>
 
 <div id="toast" class="toast"></div>
-<script src="assets/app.js?v=4"></script>
+<script src="assets/app.js?v=5"></script>
 </body>
 </html>
