@@ -1,0 +1,15 @@
+{
+  "name": "축구 포지션",
+  "short_name": "포지션",
+  "id": "./?app=soccer-lineup",
+  "description": "선발·후보 포지션 배치와 드래그 교체",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0e1a12",
+  "theme_color": "#0e1a12",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

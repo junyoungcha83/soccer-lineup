@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0e1a12">
+<title>축구 포지션</title>
+<link rel="manifest" href="manifest.webmanifest?v=1">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon.svg">
+<link rel="stylesheet" href="assets/app.css?v=1">
+</head>
+<body>
+<header class="top">
+  <input id="title" class="title" maxlength="30" placeholder="경기 이름 (예: 토요 조기축구)">
+  <div class="tools">
+    <select id="formation" aria-label="포메이션"></select>
+    <button id="shareBtn" title="라인업 텍스트 복사">공유</button>
+    <button id="menuBtn" title="더보기">⋯</button>
+  </div>
+</header>
+
+<section class="pitch-wrap">
+  <div id="pitch" class="pitch">
+    <div class="line box"></div>
+    <div class="line six"></div>
+    <div class="line arc"></div>
+    <div class="line circle"></div>
+    <div class="line corner cl"></div>
+    <div class="line corner cr"></div>
+    <div id="slots"></div>
+  </div>
+</section>
+
+<section class="bench">
+  <div class="bench-head">
+    <h2>후보 <span id="benchCount">0</span></h2>
+    <button id="addBtn">+ 선수 추가</button>
+  </div>
+  <p class="hint">선수를 끌어서 다른 선수 위에 놓으면 교체 · 탭하면 번호/이름 수정</p>
+  <ul id="benchList" class="bench-list" data-bench-zone="1"></ul>
+</section>
+
+<dialog id="editDlg">
+  <form method="dialog" id="editForm">
+    <h3 id="editTitle">선수 정보</h3>
+    <label>포지션 <input id="fPos" maxlength="4" placeholder="예: ST"></label>
+    <label>백넘버 <input id="fNum" inputmode="numeric" maxlength="3" placeholder="10"></label>
+    <label>이름 <input id="fName" maxlength="12" placeholder="이름"></label>
+    <div class="dlg-btns">
+      <button type="button" id="fBench" class="ghost">후보로 보내기</button>
+      <button type="button" id="fDelete" class="danger">삭제</button>
+      <span class="sp"></span>
+      <button value="cancel" class="ghost">취소</button>
+      <button value="ok" id="fOk" class="primary">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="menuDlg">
+  <form method="dialog">
+    <h3>더보기</h3>
+    <button type="button" id="resetPos" class="wide">포지션 이름 초기화 (포메이션 기본값)</button>
+    <button type="button" id="clearAll" class="wide danger">전체 초기화</button>
+    <div class="dlg-btns"><span class="sp"></span><button class="ghost">닫기</button></div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast"></div>
+<script src="assets/app.js?v=1"></script>
+</body>
+</html>
