@@ -24,7 +24,7 @@ select { background: var(--line); border: 0; border-radius: 8px; padding: 6px 8p
 /* 높이를 %가 아닌 flex 로 받아야 일부 모바일 브라우저에서 경기장 높이가 0이 되지 않는다 */
 .pitch-wrap { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; padding: 0 8px 6px; }
 .pitch {
-  position: relative; flex: 1 1 0; min-height: 320px; width: 100%; max-width: 560px;
+  position: relative; flex: 1 1 0; min-height: 320px; width: 100%; max-width: 560px; --sz: clamp(40px, 7dvh, 60px);
   overflow: hidden; border: 2px solid #1f2a22;
   background: repeating-linear-gradient(180deg, #4d7552 0 12.5%, #567e5b 12.5% 25%);
 }
@@ -38,20 +38,23 @@ select { background: var(--line); border: 0; border-radius: 8px; padding: 6px 8p
 
 /* 경기장 위 선수: 유니폼 + 백넘버, 아래 이름 */
 .slot {
-  position: absolute; transform: translate(-50%, -26px); width: 84px;
+  position: absolute; transform: translate(-50%, calc(var(--sz) * -.65)); width: calc(var(--sz) + 40px);
   display: flex; flex-direction: column; align-items: center; touch-action: none; user-select: none; cursor: grab;
 }
 .shirt { position: relative; width: 40px; height: 52px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
 .shirt svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .shirt b { position: absolute; left: 0; right: 0; top: 5px; height: 32px; display: grid; place-items: center; font-weight: 800; font-size: 15px; letter-spacing: -.5px; }
+/* 경기장 유니폼: 기본 60px(이전의 1.5배), 화면이 낮으면 40px까지 줄어든다 */
+.slot .shirt { width: var(--sz); height: calc(var(--sz) * 1.3); }
+.slot .shirt b { top: calc(var(--sz) * .125); height: calc(var(--sz) * .8); font-size: calc(var(--sz) * .37); }
 .slot.empty .shirt { opacity: .85; }
 .slot .name {
   margin-top: 2px; font-size: 13px; font-weight: 600; color: #fff; text-align: center; line-height: 1.15;
-  max-width: 84px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  max-width: calc(var(--sz) + 40px); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 .slot .pos {
-  position: absolute; top: 0; right: calc(50% + 17px); max-width: 64px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  position: absolute; top: -4px; right: calc(50% + var(--sz) * .3); max-width: 64px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   font-size: 10px; line-height: 1; font-weight: 700; color: #fff; background: rgba(0,0,0,.55); border-radius: 4px; padding: 2px 4px;
 }
 
@@ -83,7 +86,7 @@ select { background: var(--line); border: 0; border-radius: 8px; padding: 6px 8p
 .ghost-drag {
   position: fixed; z-index: 50; pointer-events: none; transform: translate(-50%, -50%) scale(1.1);
 }
-.ghost-drag .shirt { width: 44px; height: 57px; filter: drop-shadow(0 6px 8px rgba(0,0,0,.5)); }
+.ghost-drag .shirt { width: 66px; height: 86px; filter: drop-shadow(0 6px 8px rgba(0,0,0,.5)); }
 
 /* 다이얼로그 */
 dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; width: min(92vw, 360px); padding: 16px; }
@@ -121,4 +124,4 @@ dialog label input { flex: 1; background: var(--bg); border: 1px solid var(--lin
 .pos-item small { color: var(--muted); font-size: 11px; }
 .pos-item i { font-style: normal; font-size: 12px; }
 .pos-item.on { border-color: var(--accent); }
-.ghost-drag .shirt b { top: 5px; height: 36px; font-size: 17px; }
+.ghost-drag .shirt b { top: 8px; height: 53px; font-size: 24px; }
