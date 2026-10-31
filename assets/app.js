@@ -91,9 +91,10 @@ const $ = id => document.getElementById(id);
 const DEFAULT_FORMATION = '4-1-4-1';
 let S = load();
 S.xy ||= []; // 이 기능 이전 저장본 호환
+S.saved ||= {}; // 포메이션별로 '위치 저장' 해 둔 배치 { pos, xy }
 
 function blank() {
-  return { title: '', formation: DEFAULT_FORMATION, players: {}, starters: Array(11).fill(null), pos: Array(11).fill(null), xy: [], bench: [] };
+  return { title: '', formation: DEFAULT_FORMATION, players: {}, starters: Array(11).fill(null), pos: Array(11).fill(null), xy: [], saved: {}, bench: [] };
 }
 function load() {
   try {
@@ -117,6 +118,7 @@ function setFormation(f) {
   S.xy = [];
   S.bench.unshift(...extra);
   S.formation = f;
+  if (S.saved[f]) { S.pos = [...S.saved[f].pos]; S.xy = S.saved[f].xy.map(v => [...v]); }
   save(); render();
   if (extra.length) toast(`${extra.length}명이 후보로 이동했어요`);
 }
@@ -124,6 +126,7 @@ function setFormation(f) {
 /* ---------- 렌더 ---------- */
 function render() {
   $('title').value = S.title;
+  $('resetBtn').textContent = S.saved[S.formation] ? '↺ 저장 위치' : '↺ 기본 위치';
   $('formation').value = S.formation;
   $('slots').innerHTML = layout().map(([label, x, y], i) => {
     const p = S.players[S.starters[i]];
@@ -357,14 +360,30 @@ $('title').oninput = e => { S.title = e.target.value; save(); };
 $('addBtn').onclick = addPlayer;
 $('menuBtn').onclick = () => $('menuDlg').showModal();
 // 포지션 이름·손으로 옮긴 위치를 모두 포메이션 기본값으로 (선수 배치는 그대로)
-function resetPositions() {
-  if (!S.pos.some(Boolean) && !S.xy.some(Boolean)) { toast('이미 기본 위치예요'); return; }
-  if (!confirm('모든 선수를 포메이션 기본 위치로 되돌릴까요?')) return;
-  S.pos = S.pos.map(() => null); S.xy = [];
-  save(); render(); toast('기본 위치로 되돌렸어요');
+// '위치 저장': 지금 보이는 배치(포지션 이름 + 모든 선수 좌표)를 이 포메이션의 내 기본값으로
+function saveLayout() {
+  if (S.saved[S.formation] && !confirm('이전에 저장한 위치를 지금 위치로 바꿀까요?')) return;
+  S.saved[S.formation] = { pos: [...S.pos], xy: layout().map(([, x, y]) => [x, y]) };
+  save(); render(); toast('지금 위치를 저장했어요 · ↺ 누르면 이 위치로 돌아와요');
 }
+// ↺: 저장한 위치가 있으면 그 위치로, 없으면 포메이션 기본 위치로 (선수 배치는 그대로)
+function resetPositions() {
+  const sv = S.saved[S.formation];
+  const same = sv ? JSON.stringify([S.pos, S.xy]) === JSON.stringify([sv.pos, sv.xy]) : !S.pos.some(Boolean) && !S.xy.some(Boolean);
+  if (same) { toast(sv ? '이미 저장한 위치예요' : '이미 기본 위치예요'); return; }
+  if (!confirm(sv ? '모든 선수를 저장한 위치로 되돌릴까요?' : '모든 선수를 포메이션 기본 위치로 되돌릴까요?')) return;
+  if (sv) { S.pos = [...sv.pos]; S.xy = sv.xy.map(v => [...v]); } else { S.pos = S.pos.map(() => null); S.xy = []; }
+  save(); render(); toast(sv ? '저장한 위치로 되돌렸어요' : '기본 위치로 되돌렸어요');
+}
+$('saveBtn').onclick = saveLayout;
 $('resetBtn').onclick = resetPositions;
-$('resetPos').onclick = () => { $('menuDlg').close(); resetPositions(); };
+// 메뉴: 저장한 위치까지 지우고 포메이션 원래 기본값으로
+$('resetPos').onclick = () => {
+  $('menuDlg').close();
+  if (!confirm(`저장한 위치를 지우고 ${S.formation} 원래 기본 위치로 되돌릴까요?`)) return;
+  delete S.saved[S.formation]; S.pos = S.pos.map(() => null); S.xy = [];
+  save(); render(); toast('포메이션 기본 위치로 되돌렸어요');
+};
 $('clearAll').onclick = () => {
   if (!confirm('선수와 배치를 모두 지울까요?')) return;
   S = blank(); save(); render(); $('menuDlg').close();

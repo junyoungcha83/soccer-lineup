@@ -126,8 +126,9 @@ dialog label input { flex: 1; background: var(--bg); border: 1px solid var(--lin
 .pos-item.on { border-color: var(--accent); }
 .ghost-drag .shirt b { top: 8px; height: 53px; font-size: 24px; }
 
-/* 기본 위치 버튼 (경기장 오른쪽 위) */
+/* 위치 저장·기본 위치 버튼 (경기장 오른쪽 위) */
+.pitch-tools { position: absolute; top: 8px; right: 8px; z-index: 5; display: flex; gap: 6px; }
 .reset-btn {
-  position: absolute; top: 8px; right: 8px; z-index: 5; padding: 5px 10px; border-radius: 14px;
+  padding: 5px 10px; border-radius: 14px;
   background: rgba(0,0,0,.5); color: #fff; font-size: 12px; font-weight: 600;
 }
