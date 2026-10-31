@@ -8,7 +8,7 @@
 <link rel="manifest" href="manifest.webmanifest?v=1">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icon.svg">
-<link rel="stylesheet" href="assets/app.css?v=1">
+<link rel="stylesheet" href="assets/app.css?v=2">
 </head>
 <body>
 <header class="top">
@@ -44,7 +44,10 @@
 <dialog id="editDlg">
   <form method="dialog" id="editForm">
     <h3 id="editTitle">선수 정보</h3>
-    <label>포지션 <input id="fPos" maxlength="4" placeholder="예: ST"></label>
+    <div class="pos-row" id="posRow">
+      <label>포지션 <input id="fPos" maxlength="8" placeholder="예: ST"></label>
+      <button type="button" id="posListBtn">☰ 목록</button>
+    </div>
     <label>백넘버 <input id="fNum" inputmode="numeric" maxlength="3" placeholder="10"></label>
     <label>이름 <input id="fName" maxlength="12" placeholder="이름"></label>
     <div class="dlg-btns">
@@ -60,13 +63,19 @@
 <dialog id="menuDlg">
   <form method="dialog">
     <h3>더보기</h3>
-    <button type="button" id="resetPos" class="wide">포지션 이름 초기화 (포메이션 기본값)</button>
+    <button type="button" id="resetPos" class="wide">포지션 초기화 (포메이션 기본값)</button>
     <button type="button" id="clearAll" class="wide danger">전체 초기화</button>
     <div class="dlg-btns"><span class="sp"></span><button class="ghost">닫기</button></div>
   </form>
 </dialog>
 
+<dialog id="posDlg" class="pos-dlg">
+  <div class="pos-dlg-head"><h3>포지션 목록</h3><button type="button" id="posClose" class="ghost">닫기</button></div>
+  <p class="hint">표준 포지션은 고르면 경기장의 그 자리로 이동해요. 전술 역할·옛 포지션은 이름만 바뀌어요.</p>
+  <div id="posList" class="pos-list"></div>
+</dialog>
+
 <div id="toast" class="toast"></div>
-<script src="assets/app.js?v=1"></script>
+<script src="assets/app.js?v=2"></script>
 </body>
 </html>

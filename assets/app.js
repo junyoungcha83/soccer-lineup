@@ -18,7 +18,71 @@ const FORMATIONS = {
 };
 const GK = ['GK', 50, 92];
 // 필드 선수는 세로로 28~86% 범위에 펼쳐 줄 간격을 넓힌다.
-const slotsOf = f => [GK, ...FORMATIONS[f]].map(([p, x, y], i) => [p, 100 - x, i ? 28 + (74 - y) * 58 / 59 : 100 - y]);
+const toScreen = (x, y, gk) => [100 - x, gk ? 100 - y : 28 + (74 - y) * 58 / 59];
+const slotsOf = f => [GK, ...FORMATIONS[f]].map(([p, x, y], i) => [p, ...toScreen(x, y, !i)]);
+
+// 포지션 목록. 좌표가 있으면 고를 때 그 자리로 옮기고, 없으면(전술 역할·옛 포지션) 이름만 바꾼다.
+const POS_GROUPS = [
+  ['골키퍼', [['GK', '골키퍼', '골문을 지키는 유일하게 손을 쓰는 선수', 50, 92]]],
+  ['수비수', [
+    ['SW', '스위퍼 · 리베로', '센터백 뒤에서 뒷공간을 쓸어내는 최후방 수비', 50, 79],
+    ['CB', '센터백', '수비 중앙', 50, 74], ['LCB', '왼쪽 센터백', '', 34, 74], ['RCB', '오른쪽 센터백', '', 66, 74],
+    ['LB', '레프트백', '왼쪽 풀백', 13, 72], ['RB', '라이트백', '오른쪽 풀백', 87, 72],
+    ['LWB', '레프트 윙백', '공격 가담이 많은 왼쪽 측면 수비', 10, 60], ['RWB', '라이트 윙백', '공격 가담이 많은 오른쪽 측면 수비', 90, 60]]],
+  ['미드필더', [
+    ['DM', '수비형 미드필더', 'CDM · 수비 라인 바로 앞', 50, 60], ['LDM', '왼쪽 수비형 미드', '', 35, 60], ['RDM', '오른쪽 수비형 미드', '', 65, 60],
+    ['CM', '중앙 미드필더', '', 50, 50], ['LCM', '왼쪽 중앙 미드', '', 32, 50], ['RCM', '오른쪽 중앙 미드', '', 68, 50],
+    ['LM', '레프트 미드필더', '왼쪽 측면 미드', 14, 46], ['RM', '라이트 미드필더', '오른쪽 측면 미드', 86, 46],
+    ['AM', '공격형 미드필더', 'CAM · 10번 자리', 50, 36], ['LAM', '왼쪽 공격형 미드', '', 28, 36], ['RAM', '오른쪽 공격형 미드', '', 72, 36]]],
+  ['공격수', [
+    ['LW', '레프트 윙어', '왼쪽 측면 공격', 16, 23], ['RW', '라이트 윙어', '오른쪽 측면 공격', 84, 23],
+    ['SS', '섀도 스트라이커', '최전방 공격수 바로 뒤', 50, 28], ['F9', '폴스 나인', '내려와서 연결하는 가짜 9번', 50, 24],
+    ['LF', '레프트 포워드', '', 30, 20], ['RF', '라이트 포워드', '', 70, 20],
+    ['CF', '센터 포워드', '최전방 중앙', 50, 18], ['ST', '스트라이커', '최전방 득점 담당', 50, 15],
+    ['LS', '왼쪽 스트라이커', '투톱의 왼쪽', 36, 17], ['RS', '오른쪽 스트라이커', '투톱의 오른쪽', 64, 17]]],
+  ['풋살', [
+    ['FIXO', '픽소', '풋살 최후방 수비', 50, 70], ['ALA', '아라', '풋살 측면', 20, 46], ['PIVO', '피보', '풋살 최전방 기둥', 50, 20],
+    ['유니버설', '유니버설', '풋살 전 포지션 소화']]],
+  ['전술 역할 (이름만 바뀜)', [
+    ['스위퍼키퍼', '스위퍼 키퍼', '박스 밖까지 나와 뒷공간을 막는 골키퍼'],
+    ['스토퍼', '스토퍼', '상대 공격수를 앞으로 나가 막는 센터백'],
+    ['볼플레잉CB', '볼 플레잉 디펜더', '후방 빌드업을 맡는 센터백'],
+    ['인버티드FB', '인버티드 풀백', '공격 시 중앙으로 좁혀 들어오는 풀백'],
+    ['앵커', '앵커', '수비 라인 앞을 지키는 홀딩 미드'], ['볼란치', '볼란치', '수비형 미드필더(브라질·일본식 표현)'],
+    ['레지스타', '레지스타', '후방에서 경기를 조율하는 플레이메이커'], ['딥라잉PM', '딥라잉 플레이메이커', '깊은 위치의 패스 공급자'],
+    ['박스투박스', '박스 투 박스', '양쪽 페널티박스를 오가는 미드'], ['메짤라', '메짤라', '측면 공간으로 침투하는 중앙 미드'],
+    ['엔간체', '엔간체', '움직임은 적고 패스로 창조하는 10번'], ['트레콰르티스타', '트레콰르티스타', '미드와 공격 사이의 창조적 10번'],
+    ['라움도이터', '라움도이터', '공간을 찾아 들어가는 공격수'], ['인사이드FW', '인사이드 포워드', '측면에서 안으로 파고드는 공격수'],
+    ['인버티드윙어', '인버티드 윙어', '주발 반대쪽 측면에서 안으로 꺾는 윙어'],
+    ['타깃맨', '타깃맨', '롱볼을 받아 버텨주는 장신 공격수'], ['포처', '포처', '박스 안 마무리 전문 공격수'],
+    ['프레싱FW', '프레싱 포워드', '앞에서부터 압박하는 공격수']]],
+  ['옛 포지션 (2-3-5 시절)', [
+    ['FB', '풀백', '2-3-5의 수비수 2명'], ['CH', '센터하프', '2-3-5의 중앙 하프'], ['WH', '윙하프', '2-3-5의 측면 하프'],
+    ['IL', '인사이드 레프트', '왼쪽 안쪽 공격수'], ['IR', '인사이드 라이트', '오른쪽 안쪽 공격수'],
+    ['OL', '아웃사이드 레프트', '왼쪽 바깥 공격수'], ['OR', '아웃사이드 라이트', '오른쪽 바깥 공격수']]],
+];
+const POS = Object.fromEntries(POS_GROUPS.flatMap(([, list]) => list.map(([code, , , x, y]) => [code, { x, y }])));
+const placed = code => POS[code]?.x != null;
+
+// 슬롯별 [포지션 이름, 화면 x, 화면 y]. 목록에서 고른 포지션은 그 자리로, 같은 포지션이 여럿이면 좌우로 벌린다.
+function layout() {
+  const out = slotsOf(S.formation).map(([p, x, y], i) => {
+    const code = S.pos[i];
+    return placed(code) ? [code, ...toScreen(POS[code].x, POS[code].y, code === 'GK')] : [code || p, x, y];
+  });
+  const groups = {};
+  out.forEach(([code], i) => { if (placed(S.pos[i])) (groups[code] ||= []).push(i); });
+  for (const ids of Object.values(groups)) {
+    if (ids.length < 2) continue;
+    const x0 = out[ids[0]][1];
+    ids.forEach((i, k) => {
+      out[i][1] = Math.abs(x0 - 50) < 5
+        ? 50 + (k - (ids.length - 1) / 2) * 24
+        : (k % 2 ? 100 - x0 : x0) + Math.floor(k / 2) * (x0 < 50 ? 12 : -12) * (k % 2 ? -1 : 1);
+    });
+  }
+  return out;
+}
 
 const KEY = 'soccer-lineup-v1';
 const $ = id => document.getElementById(id);
@@ -51,13 +115,12 @@ function setFormation(f) {
 function render() {
   $('title').value = S.title;
   $('formation').value = S.formation;
-  const slots = slotsOf(S.formation);
-  $('slots').innerHTML = slots.map(([, x, y], i) => {
+  $('slots').innerHTML = layout().map(([label, x, y], i) => {
     const p = S.players[S.starters[i]];
     return `<div class="slot${p ? '' : ' empty'}" data-slot="${i}" style="left:${x}%;top:${y}%">
       ${shirt(p ? p.num : '+', i === 0)}
       <div class="name">${p ? esc(p.name || '이름없음') : '빈 자리'}</div>
-      <div class="pos">${esc(posName(i))}</div></div>`;
+      <div class="pos">${esc(label)}</div></div>`;
   }).join('');
   $('benchCount').textContent = S.bench.length;
   $('benchList').innerHTML = S.bench.length ? S.bench.map((id, k) => {
@@ -180,7 +243,7 @@ function openEdit(src) {
   const id = isSlot ? S.starters[src.i] : S.bench[src.i];
   const p = S.players[id];
   $('editTitle').textContent = isSlot ? (p ? '선발 선수' : '빈 자리에 선수 넣기') : '후보 선수';
-  $('fPos').parentElement.hidden = !isSlot;
+  $('posRow').hidden = !isSlot;
   $('fPos').value = isSlot ? posName(src.i) : '';
   $('fNum').value = p?.num || '';
   $('fName').value = p?.name || '';
@@ -192,7 +255,7 @@ function openEdit(src) {
 function addPlayer() { editing = { type: 'new' }; openNew(); }
 function openNew() {
   $('editTitle').textContent = '후보 추가';
-  $('fPos').parentElement.hidden = true;
+  $('posRow').hidden = true;
   $('fNum').value = ''; $('fName').value = '';
   $('fBench').hidden = $('fDelete').hidden = true;
   $('editDlg').showModal(); $('fNum').focus();
@@ -217,6 +280,10 @@ $('editForm').addEventListener('submit', e => {
   }
   save(); render();
 });
+// 입력칸에서 엔터 = 저장 (기본 동작은 첫 번째 제출 버튼인 '취소'가 눌린다)
+$('editForm').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT' && !e.isComposing) { e.preventDefault(); $('fOk').click(); }
+});
 $('fBench').onclick = () => {
   S.bench.push(S.starters[editing.i]); S.starters[editing.i] = null;
   $('editDlg').close(); save(); render();
@@ -229,6 +296,22 @@ $('fDelete').onclick = () => {
   delete S.players[id];
   $('editDlg').close(); save(); render();
 };
+
+/* ---------- 포지션 목록 ---------- */
+$('posList').innerHTML = POS_GROUPS.map(([group, list]) => `<h4>${esc(group)}</h4>` + list.map(([code, name, desc, x]) =>
+  `<button type="button" class="pos-item" data-code="${esc(code)}"><b>${esc(code)}</b><span>${esc(name)}` +
+  `${desc ? `<small>${esc(desc)}</small>` : ''}</span>${x != null ? '<i>📍</i>' : ''}</button>`).join('')).join('');
+$('posListBtn').onclick = () => {
+  const cur = $('fPos').value.trim().toUpperCase();
+  $('posList').querySelectorAll('.pos-item').forEach(b => b.classList.toggle('on', b.dataset.code === cur));
+  $('posDlg').showModal();
+  $('posList').querySelector('.on')?.scrollIntoView({ block: 'center' });
+};
+$('posList').onclick = e => {
+  const b = e.target.closest('.pos-item'); if (!b) return;
+  $('fPos').value = b.dataset.code; $('posDlg').close();
+};
+$('posClose').onclick = () => $('posDlg').close();
 
 /* ---------- 상단·메뉴 ---------- */
 $('formation').innerHTML = Object.keys(FORMATIONS).map(f => `<option>${f}</option>`).join('');
