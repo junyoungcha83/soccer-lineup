@@ -1,0 +1,10 @@
+name = "soccer-lineup-api"
+main = "src/index.js"
+compatibility_date = "2025-05-01"
+
+# KV: npx wrangler kv namespace create LINEUP  → 아래 id
+[[kv_namespaces]]
+binding = "LINEUP"
+id = "f61a24b5fc1e4f0b9497b155f261a029"
+
+# 동기화 비밀번호(게임월드와 같은 값): printf '%s' "값" | npx wrangler secret put EDIT_TOKEN

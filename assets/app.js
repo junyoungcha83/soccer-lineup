@@ -90,10 +90,13 @@ const KEY = 'soccer-lineup-v1';
 const $ = id => document.getElementById(id);
 const DEFAULT_FORMATION = '4-1-4-1';
 const SLOT_MIN = 5, SLOT_MAX = 20;
+const filled = sv => (sv && !sv.del ? sv : null);   // 지운 칸은 다른 폰에도 전해지게 {del, at} 로 남는다
 let S = load();
 S.xy ||= []; // 이 기능 이전 저장본 호환
 S.slots ||= Array(SLOT_MIN).fill(null); // 저장함: 칸마다 { name, at, formation, starters, bench, pos, xy, players }
 migrateSaved();
+// 동기화 이전부터 쓰던 폰은 처음 한 번 자기 화면을 올리도록 시각을 붙인다
+if (S.boardAt == null) { S.boardAt = Object.keys(S.players).length ? Date.now() : 0; persist(); }
 
 function blank() {
   return { title: '', formation: DEFAULT_FORMATION, players: {}, starters: Array(11).fill(null), pos: Array(11).fill(null), xy: [], slots: Array(SLOT_MIN).fill(null), cur: null, bench: [] };
@@ -107,7 +110,12 @@ function load() {
   } catch {}
   return blank();
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }
+// save(): 이 폰에 저장 + 잠시 뒤 서버로. board=false 는 저장함만 바뀐 경우(현재 화면 시각은 그대로).
+function save(board = true) {
+  if (board) S.boardAt = Date.now();
+  persist(); schedulePush();
+}
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }
 const uid = () => Math.random().toString(36).slice(2, 9);
 const posName = i => S.pos[i] || slotsOf(S.formation)[i][0];
 
@@ -127,7 +135,7 @@ function setFormation(f) {
 /* ---------- 렌더 ---------- */
 function render() {
   $('title').value = S.title;
-  $('saveBtn').textContent = '💾 ' + (S.slots[S.cur]?.name || '저장함');
+  $('saveBtn').textContent = '💾 ' + (filled(S.slots[S.cur])?.name || '저장함');
   $('formation').value = S.formation;
   $('slots').innerHTML = layout().map(([label, x, y], i) => {
     const p = S.players[S.starters[i]];
@@ -400,7 +408,7 @@ function loadSlot(k) {
 function migrateSaved() {
   if (!S.saved) return;
   for (const [f, sv] of Object.entries(S.saved)) {
-    const k = S.slots.indexOf(null);
+    const k = S.slots.findIndex(sv => !filled(sv));
     if (k < 0) break;
     const n = slotsOf(f).length;
     const starters = Array.from({ length: n }, (_, i) => S.starters[i] ?? null);
@@ -409,12 +417,12 @@ function migrateSaved() {
       players: Object.fromEntries(ids.map(id => [id, { ...S.players[id] }])) };
   }
   delete S.saved;
-  save();
+  persist();
 }
 
 const fmtAt = t => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 function renderSlots() {
-  $('slotList').innerHTML = S.slots.map((sv, k) => sv
+  $('slotList').innerHTML = S.slots.map(filled).map((sv, k) => sv
     ? `<li class="slot-row${k === S.cur ? ' cur' : ''}" data-k="${k}">
         <div class="slot-info"><b>${k + 1}. ${esc(sv.name)}</b>
           <small>${esc(sv.formation)} · 선발 ${sv.starters.filter(Boolean).length} · 후보 ${sv.bench.length} · ${fmtAt(sv.at)}</small></div>
@@ -427,10 +435,10 @@ function renderSlots() {
 }
 $('saveBtn').onclick = () => { renderSlots(); $('slotDlg').showModal(); };
 $('slotClose').onclick = () => $('slotDlg').close();
-$('slotAdd').onclick = () => { S.slots.push(null); save(); renderSlots(); };
+$('slotAdd').onclick = () => { S.slots.push(null); save(false); renderSlots(); };
 $('slotList').onclick = e => {
   const btn = e.target.closest('button[data-act]'); if (!btn) return;
-  const k = +btn.closest('[data-k]').dataset.k, sv = S.slots[k];
+  const k = +btn.closest('[data-k]').dataset.k, sv = filled(S.slots[k]);
   switch (btn.dataset.act) {
     case 'load':
       loadSlot(k); $('slotDlg').close(); toast(`'${sv.name}' 불러왔어요`); return;
@@ -439,22 +447,22 @@ $('slotList').onclick = e => {
       const name = sv ? sv.name : prompt('저장 이름', S.title || `라인업 ${k + 1}`);
       if (name == null) return;
       S.slots[k] = snapshot(name.trim() || `라인업 ${k + 1}`); S.cur = k;
-      save(); render(); toast(`'${S.slots[k].name}'에 저장했어요`); break;
+      save(false); render(); toast(`'${S.slots[k].name}'에 저장했어요`); break;
     }
     case 'rename': {
       const name = prompt('새 이름', sv.name);
       if (!name?.trim()) return;
-      sv.name = name.trim(); save(); render(); break;
+      sv.name = name.trim(); sv.at = Date.now(); save(false); render(); break;
     }
     case 'del':
       if (!confirm(`'${sv.name}' 저장을 지울까요?`)) return;
-      S.slots[k] = null; if (S.cur === k) S.cur = null;
-      save(); render(); break;
+      S.slots[k] = { del: true, at: Date.now() }; if (S.cur === k) S.cur = null;
+      save(false); render(); break;
   }
   renderSlots();
 };
 $('clearAll').onclick = () => {
-  if (!confirm('선수와 배치를 모두 지울까요? (저장함은 남아요)')) return;
+  if (!confirm('선수와 배치를 모두 지울까요? 동기화된 다른 폰에서도 지워져요. (저장함은 남아요)')) return;
   const slots = S.slots;
   S = blank(); S.slots = slots; save(); render(); $('menuDlg').close();
 };
@@ -478,6 +486,63 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1600);
 }
 
+/* ---------- 다른 폰과 동기화 (게임월드와 같은 방식·같은 비밀번호) ---------- */
+// 읽기는 비밀번호 없이도 되고, 올리기는 동기화 비밀번호가 맞아야 된다. 서버가 병합해서 돌려준다.
+const API = location.hostname === 'localhost'   // 맥에서 시험할 때는 wrangler dev(가짜 저장소)로
+  ? 'http://localhost:8787/api/lineup' : 'https://soccer-lineup-api.junyoung-cha83.workers.dev/api/lineup';
+const TOKEN_KEY = 'soccer-lineup-edit-token', GW_TOKEN = 'game-world-edit-token';   // 같은 주소라 게임월드 비밀번호를 그대로 쓸 수 있다
+const BOARD = ['title', 'formation', 'players', 'starters', 'pos', 'xy', 'bench'];
+const token = () => { try { return localStorage.getItem(TOKEN_KEY) || localStorage.getItem(GW_TOKEN) || ''; } catch { return ''; } };
+let pushT, syncing = false, again = false, syncMsg = '';
+function setSync(msg) { syncMsg = msg; if ($('syncStatus')) $('syncStatus').textContent = msg; }
+function schedulePush() { if (!token()) return; clearTimeout(pushT); pushT = setTimeout(sync, 800); }
+function applyRemote(r) {
+  let changed = false;
+  if (r.board && r.boardAt > (S.boardAt || 0)) {
+    const b = blank();
+    for (const k of BOARD) S[k] = r.board[k] ?? b[k];
+    S.boardAt = r.boardAt; changed = true;
+  }
+  (r.slots || []).forEach((b, i) => {
+    const a = S.slots[i] || null;
+    if ((b?.at || 0) > (a?.at || 0)) { S.slots[i] = b; changed = true; }
+  });
+  while (S.slots.length < (r.slots || []).length) { S.slots.push(null); changed = true; }
+  if (S.cur != null && !filled(S.slots[S.cur])) S.cur = null;
+  if (!changed) return;
+  persist(); render();
+  if ($('slotDlg').open) renderSlots();
+}
+async function sync() {
+  if (syncing) { again = true; return; }
+  syncing = true;
+  const t = token();
+  try {
+    const r = t
+      ? await fetch(API, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Edit-Token': t },
+          body: JSON.stringify({ board: Object.fromEntries(BOARD.map(k => [k, S[k]])), boardAt: S.boardAt || 0, slots: S.slots }) })
+      : await fetch(API, { cache: 'no-store' });
+    if (r.status === 401) { setSync('비밀번호가 맞지 않아요 · 이 폰에만 저장 중'); return; }
+    if (!r.ok) throw new Error(r.status);
+    applyRemote(await r.json());
+    setSync(t ? `동기화됨 · ${fmtAt(Date.now())}` : '받기만 하는 중 · 비밀번호를 넣으면 이 폰의 저장도 공유돼요');
+  } catch { setSync('연결 안 됨 · 이 폰에만 저장 중'); }
+  finally { syncing = false; if (again) { again = false; sync(); } }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
+setInterval(() => { if (!document.hidden) sync(); }, 30000);
+$('syncPwSave').onclick = () => {
+  const v = $('syncPw').value.trim();
+  try { v ? localStorage.setItem(TOKEN_KEY, v) : localStorage.removeItem(TOKEN_KEY); } catch {}
+  $('syncPw').value = '';
+  setSync('확인 중…'); sync();
+};
+$('menuBtn').addEventListener('click', () => {
+  $('syncPw').placeholder = token() ? '설정됨 (바꾸려면 새로 입력)' : '게임월드와 같은 비밀번호';
+  $('syncStatus').textContent = syncMsg;
+});
+
 // 저장본이 깨져서 그리기에 실패하면 선수 없는 기본 화면으로라도 띄운다
 try { render(); } catch (err) { console.error(err); S = blank(); render(); }
+sync();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

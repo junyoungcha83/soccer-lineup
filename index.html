@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="포지션">
-<link rel="stylesheet" href="assets/app.css?v=10">
+<link rel="stylesheet" href="assets/app.css?v=11">
 </head>
 <body>
 <header class="top">
@@ -74,6 +74,12 @@
     <h3>더보기</h3>
     <button type="button" id="resetPos" class="wide">포지션·위치 초기화 (포메이션 기본값)</button>
     <button type="button" id="clearAll" class="wide danger">전체 초기화</button>
+    <h4 class="menu-sub">다른 폰과 동기화</h4>
+    <div class="pos-row">
+      <label>비밀번호 <input id="syncPw" type="password" autocomplete="off" placeholder="게임월드와 같은 비밀번호"></label>
+      <button type="button" id="syncPwSave">저장</button>
+    </div>
+    <p id="syncStatus" class="hint"></p>
     <div class="dlg-btns"><span class="sp"></span><button class="ghost">닫기</button></div>
   </form>
 </dialog>
@@ -92,6 +98,6 @@
 </dialog>
 
 <div id="toast" class="toast"></div>
-<script src="assets/app.js?v=10"></script>
+<script src="assets/app.js?v=11"></script>
 </body>
 </html>
