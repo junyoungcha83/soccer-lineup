@@ -17,8 +17,8 @@ const FORMATIONS = {
   '풋살 1-2-1': [['FIXO', 50, 70], ['ALA', 20, 46], ['ALA', 80, 46], ['PIVO', 50, 20]],
 };
 const GK = ['GK', 50, 92];
-// 필드 선수는 세로로 12~74% 범위에 펼쳐 줄 간격을 넓히고, 골키퍼는 이름이 잘리지 않게 90%에 둔다.
-const toScreen = (x, y, gk) => [x, gk ? 90 : 74 - (74 - y) * 62 / 59];
+// 필드 선수는 세로로 12~72% 범위에 펼쳐 줄 간격을 넓히고, 골키퍼는 이름이 잘리지 않게 90%에 둔다.
+const toScreen = (x, y, gk) => [x, gk ? 90 : 72 - (72 - y) * 60 / 57];
 const slotsOf = f => [GK, ...FORMATIONS[f]].map(([p, x, y], i) => [p, ...toScreen(x, y, !i)]);
 
 // 포지션 목록. 좌표가 있으면 고를 때 그 자리로 옮기고, 없으면(전술 역할·옛 포지션) 이름만 바꾼다.
@@ -131,10 +131,13 @@ function render() {
   }).join('') : '<li class="empty-bench">후보가 없어요. 경기장 선수를 여기로 끌어오거나 + 선수 추가</li>';
 }
 const SHIRT = 'M13 2 4 7 0 17l7 3 2-4v22h22V16l2 4 7-3-4-10-9-5c-1 3-4 5-7 5s-6-2-7-5z';
+const SHORTS = 'M9 36h22l2.5 14H22l-2-6-2 6H6.5z';
+// 필드 선수: 노란 상의 + 검은 하의. 골키퍼: 검은 상의(하늘색 소매) + 검은 하의.
 function shirt(num, gk) {
-  const body = gk ? '#16181b' : '#e0362c', trim = gk ? '#5fb4e8' : '#c42a22';
-  return `<div class="shirt"><svg viewBox="0 0 40 40"><path d="${SHIRT}" fill="${body}"/>` +
-    `<path d="M4 7 0 17l7 3 2-4V10z M36 7l4 10-7 3-2-4V10z" fill="${trim}"/></svg><b>${esc(num)}</b></div>`;
+  const body = gk ? '#16181b' : '#ffd21f', trim = gk ? '#5fb4e8' : '#e8b800', ink = gk ? '#fff' : '#111';
+  return `<div class="shirt"><svg viewBox="0 0 40 52"><path d="${SHORTS}" fill="#111" stroke="#3a3a3a" stroke-width=".8"/>` +
+    `<path d="${SHIRT}" fill="${body}"/><path d="M4 7 0 17l7 3 2-4V10z M36 7l4 10-7 3-2-4V10z" fill="${trim}"/></svg>` +
+    `<b style="color:${ink}">${esc(num)}</b></div>`;
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
