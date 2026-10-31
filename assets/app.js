@@ -86,13 +86,19 @@ function layout() {
 
 const KEY = 'soccer-lineup-v1';
 const $ = id => document.getElementById(id);
+const DEFAULT_FORMATION = '4-1-4-1';
 let S = load();
 
 function blank() {
-  return { title: '', formation: '4-4-2', players: {}, starters: Array(11).fill(null), pos: Array(11).fill(null), bench: [] };
+  return { title: '', formation: DEFAULT_FORMATION, players: {}, starters: Array(11).fill(null), pos: Array(11).fill(null), bench: [] };
 }
 function load() {
-  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && FORMATIONS[s.formation]) return s; } catch {}
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    // 선수를 아직 한 명도 안 넣은 저장본은 새 기본값(4-1-4-1)으로 시작
+    if (s && FORMATIONS[s.formation] && Object.keys(s.players || {}).length) return s;
+    if (s) return { ...blank(), title: s.title || '' };
+  } catch {}
   return blank();
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }
@@ -354,5 +360,6 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1600);
 }
 
-render();
+// 저장본이 깨져서 그리기에 실패하면 선수 없는 기본 화면으로라도 띄운다
+try { render(); } catch (err) { console.error(err); S = blank(); render(); }
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

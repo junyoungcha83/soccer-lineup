@@ -21,9 +21,10 @@ button { background: var(--line); border: 0; border-radius: 8px; padding: 6px 10
 select { background: var(--line); border: 0; border-radius: 8px; padding: 6px 8px; }
 
 /* 경기장: 후보 막대를 뺀 나머지 화면 전부 — 반쪽 코트, 우리 골대가 아래(6시) */
-.pitch-wrap { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 0 8px 6px; }
+/* 높이를 %가 아닌 flex 로 받아야 일부 모바일 브라우저에서 경기장 높이가 0이 되지 않는다 */
+.pitch-wrap { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; align-items: center; padding: 0 8px 6px; }
 .pitch {
-  position: relative; height: 100%; width: 100%; max-width: 560px;
+  position: relative; flex: 1 1 0; min-height: 320px; width: 100%; max-width: 560px;
   overflow: hidden; border: 2px solid #1f2a22;
   background: repeating-linear-gradient(180deg, #4d7552 0 12.5%, #567e5b 12.5% 25%);
 }
@@ -43,7 +44,7 @@ select { background: var(--line); border: 0; border-radius: 8px; padding: 6px 8p
 .shirt { position: relative; width: 40px; height: 52px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
 .shirt svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .shirt b { position: absolute; left: 0; right: 0; top: 5px; height: 32px; display: grid; place-items: center; font-weight: 800; font-size: 15px; letter-spacing: -.5px; }
-.slot.empty .shirt { opacity: .55; }
+.slot.empty .shirt { opacity: .85; }
 .slot .name {
   margin-top: 2px; font-size: 13px; font-weight: 600; color: #fff; text-align: center; line-height: 1.15;
   max-width: 84px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
