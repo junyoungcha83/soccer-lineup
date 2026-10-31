@@ -136,6 +136,7 @@ function setFormation(f) {
 function render() {
   $('title').value = S.title;
   $('saveBtn').textContent = '💾 ' + (filled(S.slots[S.cur])?.name || '저장함');
+  $('viewBadge').hidden = !viewOnly();
   $('formation').value = S.formation;
   $('slots').innerHTML = layout().map(([label, x, y], i) => {
     const p = S.players[S.starters[i]];
@@ -422,16 +423,20 @@ function migrateSaved() {
 
 const fmtAt = t => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
 function renderSlots() {
+  const ro = viewOnly();
   $('slotList').innerHTML = S.slots.map(filled).map((sv, k) => sv
     ? `<li class="slot-row${k === S.cur ? ' cur' : ''}" data-k="${k}">
         <div class="slot-info"><b>${k + 1}. ${esc(sv.name)}</b>
           <small>${esc(sv.formation)} · 선발 ${sv.starters.filter(Boolean).length} · 후보 ${sv.bench.length} · ${fmtAt(sv.at)}</small></div>
         <div class="slot-btns"><button type="button" data-act="load" class="primary">불러오기</button>
-          <button type="button" data-act="save">덮어쓰기</button><button type="button" data-act="rename">이름</button>
-          <button type="button" data-act="del" class="danger">삭제</button></div></li>`
+          ${ro ? '' : `<button type="button" data-act="save">덮어쓰기</button><button type="button" data-act="rename">이름</button>
+          <button type="button" data-act="del" class="danger">삭제</button>`}</div></li>`
     : `<li class="slot-row empty" data-k="${k}"><div class="slot-info"><b>${k + 1}. 비어 있음</b></div>
-        <div class="slot-btns"><button type="button" data-act="save">여기에 저장</button></div></li>`).join('');
-  $('slotAdd').hidden = S.slots.length >= SLOT_MAX;
+        ${ro ? '' : '<div class="slot-btns"><button type="button" data-act="save">여기에 저장</button></div>'}</li>`).join('');
+  $('slotAdd').hidden = ro || S.slots.length >= SLOT_MAX;
+  $('slotHint').textContent = ro
+    ? '보기 전용이에요. 불러오기로 팀이 저장한 라인업을 볼 수 있어요. 저장·수정은 팀 비밀번호가 필요해요.'
+    : '저장: 지금 화면(포메이션·선발·위치·후보)을 칸에 담아요. 불러오기: 그 상태로 바로 바뀌어요.';
 }
 $('saveBtn').onclick = () => { renderSlots(); $('slotDlg').showModal(); };
 $('slotClose').onclick = () => $('slotDlg').close();
@@ -471,7 +476,7 @@ $('shareBtn').onclick = async () => {
   const line = id => { const p = S.players[id]; return `${p.num ? p.num + '번 ' : ''}${p.name || '이름없음'}`; };
   const starters = S.starters.map((id, i) => `${posName(i)} ${id ? line(id) : '(비어있음)'}`);
   const text = [S.title || '라인업', `포메이션 ${S.formation}`, '', '[선발]', ...starters, '', `[후보 ${S.bench.length}]`,
-    ...(S.bench.length ? S.bench.map(line) : ['없음'])].join('\n');
+    ...(S.bench.length ? S.bench.map(line) : ['없음']), '', `앱에서 보기: ${APP_URL}`].join('\n');
   try {
     if (navigator.share) await navigator.share({ text });
     else { await navigator.clipboard.writeText(text); toast('라인업을 복사했어요'); }
@@ -486,31 +491,38 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1600);
 }
 
-/* ---------- 다른 폰과 동기화 (게임월드와 같은 방식·같은 비밀번호) ---------- */
-// 읽기는 비밀번호 없이도 되고, 올리기는 동기화 비밀번호가 맞아야 된다. 서버가 병합해서 돌려준다.
+/* ---------- 팀 공유 (다른 폰과 동기화) ---------- */
+// 주소만 있으면 누구나 받아 보고(보기 전용), 팀 비밀번호가 있는 폰만 서버에 올린다. 서버가 병합해서 돌려준다.
+// 팀 비밀번호는 축구 앱 전용(게임월드 비밀번호와 별개 — 멤버에게 알려줘도 가족 앱은 안전).
 const API = location.hostname === 'localhost'   // 맥에서 시험할 때는 wrangler dev(가짜 저장소)로
   ? 'http://localhost:8787/api/lineup' : 'https://soccer-lineup-api.junyoung-cha83.workers.dev/api/lineup';
-const TOKEN_KEY = 'soccer-lineup-edit-token', GW_TOKEN = 'game-world-edit-token';   // 같은 주소라 게임월드 비밀번호를 그대로 쓸 수 있다
+const APP_URL = location.origin + location.pathname;
+const TOKEN_KEY = 'soccer-lineup-edit-token';
 const BOARD = ['title', 'formation', 'players', 'starters', 'pos', 'xy', 'bench'];
-const token = () => { try { return localStorage.getItem(TOKEN_KEY) || localStorage.getItem(GW_TOKEN) || ''; } catch { return ''; } };
+const token = () => { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; } };
+const viewOnly = () => !token();
 let pushT, syncing = false, again = false, syncMsg = '';
 function setSync(msg) { syncMsg = msg; if ($('syncStatus')) $('syncStatus').textContent = msg; }
 function schedulePush() { if (!token()) return; clearTimeout(pushT); pushT = setTimeout(sync, 800); }
 function applyRemote(r) {
   let changed = false;
-  if (r.board && r.boardAt > (S.boardAt || 0)) {
+  // 수정 권한: 늦게 바꾼 쪽이 이긴다. 보기 전용: 팀에서 새로 바꿨을 때만 받아서(내 폰에서 잠깐 만져본 건 그때 덮인다)
+  const since = viewOnly() ? (S.seenAt ?? S.boardAt ?? 0) : (S.boardAt || 0);
+  if (r.board && r.boardAt > since) {
     const b = blank();
     for (const k of BOARD) S[k] = r.board[k] ?? b[k];
     S.boardAt = r.boardAt; changed = true;
   }
+  if (r.board) S.seenAt = r.boardAt;
   (r.slots || []).forEach((b, i) => {
     const a = S.slots[i] || null;
     if ((b?.at || 0) > (a?.at || 0)) { S.slots[i] = b; changed = true; }
   });
   while (S.slots.length < (r.slots || []).length) { S.slots.push(null); changed = true; }
   if (S.cur != null && !filled(S.slots[S.cur])) S.cur = null;
+  persist();
   if (!changed) return;
-  persist(); render();
+  render();
   if ($('slotDlg').open) renderSlots();
 }
 async function sync() {
@@ -522,25 +534,53 @@ async function sync() {
       ? await fetch(API, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Edit-Token': t },
           body: JSON.stringify({ board: Object.fromEntries(BOARD.map(k => [k, S[k]])), boardAt: S.boardAt || 0, slots: S.slots }) })
       : await fetch(API, { cache: 'no-store' });
-    if (r.status === 401) { setSync('비밀번호가 맞지 않아요 · 이 폰에만 저장 중'); return; }
+    if (r.status === 401) { setSync('팀 비밀번호가 맞지 않아요 · 이 폰에만 저장 중'); return; }
     if (!r.ok) throw new Error(r.status);
     applyRemote(await r.json());
-    setSync(t ? `동기화됨 · ${fmtAt(Date.now())}` : '받기만 하는 중 · 비밀번호를 넣으면 이 폰의 저장도 공유돼요');
+    setSync(t ? `팀과 동기화됨 · ${fmtAt(Date.now())}` : '보기 전용 · 팀 라인업을 받는 중 (팀 비밀번호를 넣으면 수정 가능)');
   } catch { setSync('연결 안 됨 · 이 폰에만 저장 중'); }
   finally { syncing = false; if (again) { again = false; sync(); } }
 }
+function setToken(v) {
+  try { v ? localStorage.setItem(TOKEN_KEY, v) : localStorage.removeItem(TOKEN_KEY); } catch {}
+  render();
+  setSync('확인 중…'); sync();
+}
 document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
 setInterval(() => { if (!document.hidden) sync(); }, 30000);
-$('syncPwSave').onclick = () => {
-  const v = $('syncPw').value.trim();
-  try { v ? localStorage.setItem(TOKEN_KEY, v) : localStorage.removeItem(TOKEN_KEY); } catch {}
-  $('syncPw').value = '';
-  setSync('확인 중…'); sync();
-};
+$('syncPwSave').onclick = () => { const v = $('syncPw').value.trim(); $('syncPw').value = ''; setToken(v); };
 $('menuBtn').addEventListener('click', () => {
-  $('syncPw').placeholder = token() ? '설정됨 (바꾸려면 새로 입력)' : '게임월드와 같은 비밀번호';
+  $('syncPw').placeholder = token() ? '설정됨 (바꾸려면 새로 입력, 비우고 저장하면 해제)' : '팀 비밀번호';
   $('syncStatus').textContent = syncMsg;
 });
+$('viewBadge').onclick = () => $('menuBtn').click();
+
+// 멤버 초대: 보기 링크는 주소만, 수정 링크는 주소 뒤 #team=비밀번호 (# 뒤는 서버로 전송되지 않는다)
+async function shareLink(url, text) {
+  try {
+    if (navigator.share) { await navigator.share({ title: '축구 포지션', text, url }); return; }
+    await navigator.clipboard.writeText(`${text}\n${url}`); toast('링크를 복사했어요');
+  } catch (err) {
+    if (err.name !== 'AbortError') { await navigator.clipboard?.writeText(`${text}\n${url}`).catch(() => {}); toast('링크를 복사했어요'); }
+  }
+}
+$('inviteView').onclick = () => shareLink(APP_URL, '⚽ 우리 팀 라인업 (보기 전용)');
+$('inviteEdit').onclick = () => {
+  if (!token()) { toast('먼저 팀 비밀번호를 넣어 주세요'); return; }
+  if (!confirm('수정 링크를 받은 사람은 라인업과 저장함을 바꿀 수 있어요. 운영진에게만 보내세요.')) return;
+  shareLink(`${APP_URL}#team=${encodeURIComponent(token())}`, '⚽ 우리 팀 라인업 (수정 권한 포함)');
+};
+// 수정 링크로 들어오면 비밀번호를 저장하고 주소창에서는 지운다 (앱이 이미 열려 있을 때는 hashchange 로)
+function acceptInvite() {
+  const m = location.hash.match(/team=([^&]+)/);
+  if (!m) return false;
+  try { localStorage.setItem(TOKEN_KEY, decodeURIComponent(m[1])); } catch {}
+  history.replaceState(null, '', APP_URL);
+  setTimeout(() => toast('팀 비밀번호가 설정됐어요 · 이제 수정할 수 있어요'), 300);
+  return true;
+}
+acceptInvite();
+window.addEventListener('hashchange', () => { if (acceptInvite()) { render(); sync(); } });
 
 // 저장본이 깨져서 그리기에 실패하면 선수 없는 기본 화면으로라도 띄운다
 try { render(); } catch (err) { console.error(err); S = blank(); render(); }

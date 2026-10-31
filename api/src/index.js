@@ -1,6 +1,6 @@
 // 축구 포지션 API — 팀 하나의 라인업을 여러 폰이 함께 쓴다. Cloudflare Worker + KV(키 'lineup').
 //  GET /api/lineup   읽기(공개)
-//  PUT /api/lineup   쓰기(X-Edit-Token = 게임월드와 같은 동기화 비밀번호). 덮어쓰지 않고 서버 값과 병합해 돌려준다.
+//  PUT /api/lineup   쓰기(X-Edit-Token = 축구 앱 전용 팀 비밀번호, 게임월드와 별개). 덮어쓰지 않고 서버 값과 병합해 돌려준다.
 // 병합 규칙: 현재 화면(board)은 boardAt 이 늦은 쪽, 저장함은 칸마다 at 이 늦은 쪽(지운 칸은 {del, at} 로 남긴다).
 const ALLOWED_ORIGINS = ['https://junyoungcha83.github.io', 'http://localhost:8765'];
 const MAX_BYTES = 1024 * 1024;

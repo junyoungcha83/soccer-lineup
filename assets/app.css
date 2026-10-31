@@ -147,3 +147,5 @@ dialog label input { flex: 1; background: var(--bg); border: 1px solid var(--lin
 .slot-foot { padding: 4px 12px 12px; }
 .slot-foot .wide { margin: 0; }
 .menu-sub { margin: 14px 0 8px; font-size: 13px; color: var(--accent); }
+.view-badge { background: rgba(255,210,31,.85); color: #111; }
+.invite button { flex: 1; }

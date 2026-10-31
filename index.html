@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="포지션">
-<link rel="stylesheet" href="assets/app.css?v=11">
+<link rel="stylesheet" href="assets/app.css?v=12">
 </head>
 <body>
 <header class="top">
@@ -33,6 +33,7 @@
     <div class="line corner cr"></div>
     <div id="slots"></div>
     <div class="pitch-tools">
+      <button type="button" id="viewBadge" class="reset-btn view-badge" hidden>👀 보기 전용</button>
       <button type="button" id="saveBtn" class="reset-btn">💾 저장함</button>
       <button type="button" id="resetBtn" class="reset-btn">↺ 기본 위치</button>
     </div>
@@ -74,12 +75,17 @@
     <h3>더보기</h3>
     <button type="button" id="resetPos" class="wide">포지션·위치 초기화 (포메이션 기본값)</button>
     <button type="button" id="clearAll" class="wide danger">전체 초기화</button>
-    <h4 class="menu-sub">다른 폰과 동기화</h4>
+    <h4 class="menu-sub">팀 공유</h4>
     <div class="pos-row">
-      <label>비밀번호 <input id="syncPw" type="password" autocomplete="off" placeholder="게임월드와 같은 비밀번호"></label>
+      <label>비밀번호 <input id="syncPw" type="password" autocomplete="off" placeholder="팀 비밀번호"></label>
       <button type="button" id="syncPwSave">저장</button>
     </div>
     <p id="syncStatus" class="hint"></p>
+    <div class="dlg-btns invite">
+      <button type="button" id="inviteView">👀 보기 링크 보내기</button>
+      <button type="button" id="inviteEdit">✏️ 수정 링크 보내기</button>
+    </div>
+    <p class="hint">보기 링크: 멤버 누구나 라인업을 볼 수 있어요. 수정 링크: 팀 비밀번호가 들어 있어 받은 사람도 바꿀 수 있어요(운영진용).</p>
     <div class="dlg-btns"><span class="sp"></span><button class="ghost">닫기</button></div>
   </form>
 </dialog>
@@ -92,12 +98,12 @@
 
 <dialog id="slotDlg" class="pos-dlg">
   <div class="pos-dlg-head"><h3>저장함</h3><button type="button" id="slotClose" class="ghost">닫기</button></div>
-  <p class="hint">저장: 지금 화면(포메이션·선발·위치·후보)을 칸에 담아요. 불러오기: 그 상태로 바로 바뀌어요.</p>
+  <p class="hint" id="slotHint"></p>
   <ol id="slotList" class="slot-list"></ol>
   <div class="slot-foot"><button type="button" id="slotAdd" class="wide ghost">+ 저장 칸 추가</button></div>
 </dialog>
 
 <div id="toast" class="toast"></div>
-<script src="assets/app.js?v=11"></script>
+<script src="assets/app.js?v=12"></script>
 </body>
 </html>
