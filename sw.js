@@ -1,6 +1,6 @@
 // 오프라인 캐시 — 네트워크 우선, 실패하면 캐시.
-const CACHE = 'soccer-lineup-v9';
-const ASSETS = ['./', './index.html', './assets/app.css?v=7', './assets/app.js?v=7', './manifest.webmanifest?v=2', './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png', './assets/icon-maskable-512.png'];
+const CACHE = 'soccer-lineup-v10';
+const ASSETS = ['./', './index.html', './assets/app.css?v=8', './assets/app.js?v=8', './manifest.webmanifest?v=2', './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png', './assets/icon-maskable-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(ASSETS.map(u => c.add(new Request(u, { cache: 'reload' })).catch(() => {})))));
   self.skipWaiting();

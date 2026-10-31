@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="포지션">
-<link rel="stylesheet" href="assets/app.css?v=7">
+<link rel="stylesheet" href="assets/app.css?v=8">
 </head>
 <body>
 <header class="top">
@@ -32,6 +32,7 @@
     <div class="line corner cl"></div>
     <div class="line corner cr"></div>
     <div id="slots"></div>
+    <button type="button" id="resetBtn" class="reset-btn">↺ 기본 위치</button>
   </div>
 </section>
 
@@ -68,7 +69,7 @@
 <dialog id="menuDlg">
   <form method="dialog">
     <h3>더보기</h3>
-    <button type="button" id="resetPos" class="wide">포지션 초기화 (포메이션 기본값)</button>
+    <button type="button" id="resetPos" class="wide">포지션·위치 초기화 (포메이션 기본값)</button>
     <button type="button" id="clearAll" class="wide danger">전체 초기화</button>
     <div class="dlg-btns"><span class="sp"></span><button class="ghost">닫기</button></div>
   </form>
@@ -81,6 +82,6 @@
 </dialog>
 
 <div id="toast" class="toast"></div>
-<script src="assets/app.js?v=7"></script>
+<script src="assets/app.js?v=8"></script>
 </body>
 </html>

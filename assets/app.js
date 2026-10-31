@@ -81,6 +81,8 @@ function layout() {
         : (k % 2 ? 100 - x0 : x0) + Math.floor(k / 2) * (x0 < 50 ? 12 : -12) * (k % 2 ? -1 : 1);
     });
   }
+  // 손으로 끌어 옮긴 자리가 있으면 그게 우선
+  out.forEach((o, i) => { if (S.xy[i]) [o[1], o[2]] = S.xy[i]; });
   return out;
 }
 
@@ -88,9 +90,10 @@ const KEY = 'soccer-lineup-v1';
 const $ = id => document.getElementById(id);
 const DEFAULT_FORMATION = '4-1-4-1';
 let S = load();
+S.xy ||= []; // 이 기능 이전 저장본 호환
 
 function blank() {
-  return { title: '', formation: DEFAULT_FORMATION, players: {}, starters: Array(11).fill(null), pos: Array(11).fill(null), bench: [] };
+  return { title: '', formation: DEFAULT_FORMATION, players: {}, starters: Array(11).fill(null), pos: Array(11).fill(null), xy: [], bench: [] };
 }
 function load() {
   try {
@@ -111,6 +114,7 @@ function setFormation(f) {
   const extra = S.starters.slice(n).filter(Boolean);
   S.starters = Array.from({ length: n }, (_, i) => S.starters[i] ?? null);
   S.pos = Array(n).fill(null);
+  S.xy = [];
   S.bench.unshift(...extra);
   S.formation = f;
   save(); render();
@@ -170,7 +174,14 @@ function targetAt(x, y) {
   const el = document.elementFromPoint(x, y);
   if (!el) return null;
   const zone = el.closest('[data-bench-zone]');
-  return srcOf(el) || (zone ? { type: 'zone', el: zone } : null);
+  return srcOf(el) || (zone ? { type: 'zone', el: zone } : pitchAt(x, y));
+}
+// 경기장 빈 곳: 화면 좌표 → 경기장 안 % 좌표 (가장자리에서 조금 안쪽으로 제한)
+function pitchAt(x, y) {
+  const r = $('pitch').getBoundingClientRect();
+  if (x < r.left || x > r.right || y < r.top || y > r.bottom) return null;
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  return { type: 'pitch', el: $('pitch'), x: clamp((x - r.left) / r.width * 100, 7, 93), y: clamp((y - r.top) / r.height * 100, 5, 93) };
 }
 
 document.addEventListener('pointerdown', e => {
@@ -190,10 +201,12 @@ window.addEventListener('pointermove', e => {
   drag.ghost.style.left = e.clientX + 'px';
   drag.ghost.style.top = e.clientY + 'px';
   const t = targetAt(e.clientX, e.clientY);
-  const valid = t && !(t.type === drag.src.type && t.i === drag.src.i) ? t : null;
+  // 자기 자리 위에서 조금만 움직여도 미세 이동이 되게, 자기 자신은 '경기장 빈 곳'으로 취급
+  const self = t && t.type === drag.src.type && t.i === drag.src.i;
+  const valid = self ? (drag.src.type === 'slot' ? pitchAt(e.clientX, e.clientY) : null) : t;
   if (drag.target?.el !== valid?.el) {
     drag.target?.el.classList.remove('target', 'over');
-    valid?.el.classList.add(valid.type === 'zone' ? 'over' : 'target');
+    if (valid && valid.type !== 'pitch') valid.el.classList.add(valid.type === 'zone' ? 'over' : 'target');
   }
   drag.target = valid;
 });
@@ -214,9 +227,9 @@ function startDrag(x, y) {
   drag.active = true;
   const { type, i } = drag.src;
   const p = S.players[type === 'slot' ? S.starters[i] : S.bench[i]];
-  if (!p) { cancelDrag(); return; } // 빈 자리는 끌 수 없음
+  if (!p && type !== 'slot') { cancelDrag(); return; } // 빈 자리는 위치 옮기기만 된다
   const g = document.createElement('div');
-  g.className = 'ghost-drag'; g.innerHTML = shirt(p.num, type === 'slot' && i === 0);
+  g.className = 'ghost-drag'; g.innerHTML = shirt(p ? p.num : '+', type === 'slot' && i === 0);
   g.style.left = x + 'px'; g.style.top = y + 'px';
   document.body.appendChild(g);
   drag.ghost = g;
@@ -233,6 +246,12 @@ function cancelDrag() {
 
 function drop(src, t) {
   const st = S.starters, bn = S.bench;
+  if (t.type === 'pitch') {
+    if (src.type !== 'slot') return; // 후보를 빈 잔디에 놓으면 무시
+    S.xy[src.i] = [t.x, t.y];
+    save(); render(); return;
+  }
+  if (src.type === 'slot' && !st[src.i] && t.type !== 'slot') return; // 빈 자리를 후보로 보낼 수는 없음
   if (src.type === 'slot' && t.type === 'slot') {
     [st[src.i], st[t.i]] = [st[t.i], st[src.i]];
   } else if (src.type === 'slot' && t.type === 'bench') {
@@ -284,7 +303,9 @@ $('editForm').addEventListener('submit', e => {
   let id = isSlot ? S.starters[editing.i] : editing.type === 'bench' ? S.bench[editing.i] : null;
   if (isSlot) {
     const def = slotsOf(S.formation)[editing.i][0], v = $('fPos').value.trim().toUpperCase();
-    S.pos[editing.i] = v && v !== def ? v : null;
+    const next = v && v !== def ? v : null;
+    if (next !== S.pos[editing.i]) S.xy[editing.i] = null; // 포지션을 바꾸면 그 포지션 자리로 다시 이동
+    S.pos[editing.i] = next;
   }
   if (num || name) {
     if (num && Object.entries(S.players).some(([k, p]) => k !== id && p.num === num)) toast(`백넘버 ${num}번이 이미 있어요`);
@@ -335,7 +356,15 @@ $('formation').onchange = e => setFormation(e.target.value);
 $('title').oninput = e => { S.title = e.target.value; save(); };
 $('addBtn').onclick = addPlayer;
 $('menuBtn').onclick = () => $('menuDlg').showModal();
-$('resetPos').onclick = () => { S.pos = S.pos.map(() => null); save(); render(); $('menuDlg').close(); };
+// 포지션 이름·손으로 옮긴 위치를 모두 포메이션 기본값으로 (선수 배치는 그대로)
+function resetPositions() {
+  if (!S.pos.some(Boolean) && !S.xy.some(Boolean)) { toast('이미 기본 위치예요'); return; }
+  if (!confirm('모든 선수를 포메이션 기본 위치로 되돌릴까요?')) return;
+  S.pos = S.pos.map(() => null); S.xy = [];
+  save(); render(); toast('기본 위치로 되돌렸어요');
+}
+$('resetBtn').onclick = resetPositions;
+$('resetPos').onclick = () => { $('menuDlg').close(); resetPositions(); };
 $('clearAll').onclick = () => {
   if (!confirm('선수와 배치를 모두 지울까요?')) return;
   S = blank(); save(); render(); $('menuDlg').close();
